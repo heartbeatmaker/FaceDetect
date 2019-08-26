@@ -1,7 +1,69 @@
+'''
+YOLOv3 모델을 이용하여 이미지에서 동물을 인식한다
+
+아래 튜토리얼을 참고함
+How to Perform Object Detection With YOLOv3 in Keras
+https://machinelearningmastery.com/how-to-perform-object-detection-with-yolov3-in-keras/
+
+
+YOLO 란?
+You Only Look Once - 실시간 물체탐지(object detection)를 가능하게 하는 알고리즘
+
+데이터를 직접 학습시키거나, 사전에 훈련이 되어있는 모델을 가져다 쓸 수 있다
+여기서는 이미 학습된 모델을 가져다 쓴다
+
+<주요내용>
+1. YOLO-based Convolutional Neural Network family of models for object detection and the most recent variation called YOLOv3.
+2. The best-of-breed open source library implementation of the YOLOv3 for the Keras deep learning library.
+3. How to use a pre-trained YOLOv3 to perform object localization and detection on new photographs.
+
+
+YOLO 는 darkent을 기반으로 동작한다
+Darknet: C언어로 작성한 신경망 공개소스
+웹캠과 gpu가 장착된 컴퓨터만 있으면, 공개소스를 다운받아 사물을 실시간으로 인식할 수 있다
+
+-> 처음부터 사용하기에는 복잡함
+-> thrid-party implementation 을 사용할 수 있음
+
+ 여기서는 keras-yolo3: Training and Detecting Objects with YOLO3 를 사용
+ (https://github.com/experiencor/keras-yolo3)
+
+ YOLO를 Keras와 함께 사용하는 것. 이미 학습된 모델을 Keras 포맷으로 바꾼다
+
+ keras-yolo3 에서 제공하는 기능
+ 1. object detection
+ 2. transfer learning (??이게뭐지? 추측: 이미 학습된 모델을 Keras 포맷으로 바꾸는 것)
+ 3. training new models from scratch (새로운 데이터 학습)
+
+
+<object detection과 이미지 분석을 하는 데 필요한 파일>
+1. keras_test.py: create a YOLOv3 Keras model and save it to file.
+This script is a program that will use pre-trained weights to prepare a model
+
+i) 다크넷에서 제공하는 데이터 모델을 다운받아, 현재 디렉토리에 yolov3.weights 라는 이름으로 저장한다
+ii) 위의 다크넷 모델을 디코딩하여, Keras 모델을 생성한다
+
+
+2. keras_test.py_2: load yolov3 model and perform object detection.
+Using the model(keras_test.py에서 생성한 모델), this script performs object detection and output a model. It also depends upon OpenCV.
+
+
+
+** 궁금한 점
+- weight 이 뭐지
+- layer 가 뭐지
+'''
+
+
 # create a YOLOv3 Keras model and save it to file
 # based on https://github.com/experiencor/keras-yolo3
+
+# struct 모듈: C언어 -> 파이썬 데이터 변환 시, C 언어의 struct(구조체형)을 파이썬 자료형으로 표현하기 위해 사용한다
 import struct
+
 import numpy as np
+
+
 from keras.layers import Conv2D
 from keras.layers import Input
 from keras.layers import BatchNormalization
@@ -29,6 +91,8 @@ def _conv_block(inp, convs, skip=True):
         if conv['leaky']: x = LeakyReLU(alpha=0.1, name='leaky_' + str(conv['layer_idx']))(x)
     return add([skip_connection, x]) if skip else x
 
+
+'''define the Keras model for YOLOv3.'''
 def make_yolov3_model():
     input_image = Input(shape=(None, None, 3))
     # Layer  0 => 4
@@ -106,6 +170,8 @@ def make_yolov3_model():
     model = Model(input_image, [yolo_82, yolo_94, yolo_106])
     return model
 
+
+'''load the model weights'''
 class WeightReader:
     def __init__(self, weight_file):
         with open(weight_file, 'rb') as w_f:
@@ -125,6 +191,11 @@ class WeightReader:
         self.offset = self.offset + size
         return self.all_weights[self.offset-size:self.offset]
 
+
+    '''
+    set the model weights into the model
+    passing in our defined Keras model to set the weights into the layers
+    '''
     def load_weights(self, model):
         for i in range(106):
             try:
@@ -155,11 +226,28 @@ class WeightReader:
     def reset(self):
         self.offset = 0
 
-# define the model
+
+
+'''define the Keras model for YOLOv3.'''
 model = make_yolov3_model()
-# load the model weights
+
+
+'''load the model weights'''
 weight_reader = WeightReader('yolov3.weights')
-# set the model weights into the model
+
+
+'''set the model weights into the model
+passing in our defined Keras model to set the weights into the layers'''
 weight_reader.load_weights(model)
-# save the model to file
+
+
+'''save the model to file
+we now have a YOLOv3 model for use.
+We can save this model to a Keras compatible .h5 model file ready for later use.'''
 model.save('model.h5')
+
+
+
+'''At the end of the run, the model.h5 file is saved in your current working directory 
+with approximately the same size as the original weight file (237MB), 
+but ready to be loaded and used directly as a Keras model.'''

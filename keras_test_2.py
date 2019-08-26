@@ -1,4 +1,5 @@
-# load yolov3 model and perform object detection
+'''load yolov3 model and perform object detection'''
+
 # based on https://github.com/experiencor/keras-yolo3
 
 import numpy as np
@@ -119,16 +120,22 @@ def do_nms(boxes, nms_thresh):
 def load_image_pixels(filename, shape):
     # load the image to get its shape
     image = load_img(filename)
+
     width, height = image.size
+
     # load the image with the required size
     image = load_img(filename, target_size=shape)
+
     # convert to numpy array
     image = img_to_array(image)
+
     # scale pixel values to [0, 1]
     image = image.astype('float32')
     image /= 255.0
+
     # add a dimension so that we have one sample
     image = expand_dims(image, 0)
+
     return image, width, height
 
 # get all of the results above a threshold
@@ -147,7 +154,10 @@ def get_boxes(boxes, labels, thresh):
     return v_boxes, v_labels, v_scores
 
 # draw all results
+# pyplot: 파이썬에서 그래프를 그릴 수 있도록 도와주는 라이브러리
 def draw_boxes(filename, v_boxes, v_labels, v_scores):
+
+
     # load the image
     data = pyplot.imread(filename)
     # plot the image
@@ -156,45 +166,77 @@ def draw_boxes(filename, v_boxes, v_labels, v_scores):
     ax = pyplot.gca()
     # plot each box
     for i in range(len(v_boxes)):
+
+        if v_labels[i] == 'dog':
+            color = 'red'
+        else:
+            color = 'blue'
+
         box = v_boxes[i]
         # get coordinates
         y1, x1, y2, x2 = box.ymin, box.xmin, box.ymax, box.xmax
         # calculate width and height of the box
         width, height = x2 - x1, y2 - y1
         # create the shape
-        rect = Rectangle((x1, y1), width, height, fill=False, color='white')
+        rect = Rectangle((x1, y1), width, height, fill=False, color=color)
         # draw the box
         ax.add_patch(rect)
         # draw text and score in top left corner
         label = "%s (%.3f)" % (v_labels[i], v_scores[i])
-        pyplot.text(x1, y1, label, color='white')
+        pyplot.text(x1, y1, label, color=color)
     # show the plot
     pyplot.show()
 
+
+'''--------------------Make a Prediction-------------------'''
 # load yolov3 model
 model = load_model('model.h5')
+
 # define the expected input shape for the model
+# The model expects inputs to be color images with the square shape of 416×416 pixels
 input_w, input_h = 416, 416
+
 # define our new photo
-photo_filename = 'zebra.jpg'
+photo_filename = 'dog_cat.jpg'
+
 # load and prepare image
 image, image_w, image_h = load_image_pixels(photo_filename, (input_w, input_h))
+
 # make prediction
 yhat = model.predict(image)
+
 # summarize the shape of the list of arrays
 print([a.shape for a in yhat])
+'''-------------------Prediction 끝--------------------'''
+
+
+'''-------------------Interpret Result--------------------'''
 # define the anchors
 anchors = [[116,90, 156,198, 373,326], [30,61, 62,45, 59,119], [10,13, 16,30, 33,23]]
+
 # define the probability threshold for detected objects
-class_threshold = 0.6
+# 확실성이 70퍼센트 미만이면, 해당 object 위에 박스처리를 하지 않는다
+class_threshold = 0.7
 boxes = list()
 for i in range(len(yhat)):
     # decode the output of the network
     boxes += decode_netout(yhat[i][0], anchors[i], class_threshold, input_h, input_w)
+
 # correct the sizes of the bounding boxes for the shape of the image
 correct_yolo_boxes(boxes, image_h, image_w, input_h, input_w)
+
+
+# 예측 결과가 여러개일 경우, 확실성이 60퍼센트 이상인 것들만 박스처리한다
 # suppress non-maximal boxes
-do_nms(boxes, 0.5)
+# The model has predicted a lot of candidate bounding boxes,
+# and most of the boxes will be referring to the same objects.
+# The list of bounding boxes can be filtered and those boxes that overlap and refer to the same object can be merged.
+# We can define the amount of overlap as a configuration parameter, in this case, 50% or 0.5.
+# This filtering of bounding box regions is generally referred to as non-maximal suppression
+# and is a required post-processing step.
+do_nms(boxes, 0.6)
+
+
 # define the labels
 labels = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck",
           "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
@@ -206,10 +248,13 @@ labels = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", 
           "chair", "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse",
           "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
           "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"]
+
 # get the details of the detected objects
 v_boxes, v_labels, v_scores = get_boxes(boxes, labels, class_threshold)
+
 # summarize what we found
 for i in range(len(v_boxes)):
     print(v_labels[i], v_scores[i])
+
 # draw what we found
 draw_boxes(photo_filename, v_boxes, v_labels, v_scores)
