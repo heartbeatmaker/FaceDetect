@@ -4,8 +4,10 @@ import os
 import argparse
 import json
 import cv2
-# from utils.utils import get_yolo_boxes, makedirs
-# from utils.bbox import draw_boxes
+from utils.utils import get_yolo_boxes, makedirs
+
+# bbox a Python library that is intended to ease the use of 2D and 3D bounding boxes in areas such as Object Detection by providing a set of flexible primitives and functions that are intuitive and easy to use out of the box.
+from utils.bbox import draw_boxes
 from keras.models import load_model
 from tqdm import tqdm
 import numpy as np
@@ -16,8 +18,13 @@ from matplotlib.patches import Rectangle
 
 def _main_():
 
-    input_path = ""
-    output_path = "./test.v"
+    print(1)
+
+    # path to image or video
+    input_path = "./video.mp4"
+    output_path = "./"
+
+    print(2)
 
     labels = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck",
               "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
@@ -32,6 +39,8 @@ def _main_():
 
     anchors = [55,69, 75,234, 133,240, 136,129, 142,363, 203,290, 228,184, 285,359, 341,260]
 
+    print(3)
+
     makedirs(output_path)
 
     ###############################
@@ -40,6 +49,7 @@ def _main_():
     net_h, net_w = 416, 416 # a multiple of 32, the smaller the faster
     obj_thresh, nms_thresh = 0.5, 0.45
 
+    print(4)
     ###############################
     #   Load the model
     ###############################
@@ -51,6 +61,8 @@ def _main_():
     ###############################
     if 'webcam' in input_path: # do detection on the first webcam
         video_reader = cv2.VideoCapture(0)
+
+        print("it's a webcam")
 
         # the main loop
         batch_size  = 1
@@ -69,7 +81,11 @@ def _main_():
             if cv2.waitKey(1) == 27: 
                 break  # esc to quit
         cv2.destroyAllWindows()        
-    elif input_path[-4:] == '.mp4': # do detection on a video  
+    elif input_path[-4:] == '.mp4': # do detection on a video
+
+        print("it's a video")
+
+        # [-1]: 뒤에서 첫번째 요소
         video_out = output_path + input_path.split('/')[-1]
         video_reader = cv2.VideoCapture(input_path)
 
@@ -113,6 +129,8 @@ def _main_():
         video_writer.release()       
     else: # do detection on an image or a set of images
         image_paths = []
+
+        print("it's an image")
 
         if os.path.isdir(input_path): 
             for inp_file in os.listdir(input_path):
